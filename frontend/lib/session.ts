@@ -38,8 +38,12 @@ export async function deleteSession() {
   (await cookies()).delete(SESSION_COOKIE);
 }
 
+export async function getSessionToken(): Promise<string | null> {
+  return (await cookies()).get(SESSION_COOKIE)?.value ?? null;
+}
+
 export async function getSession(): Promise<SessionPayload | null> {
-  const token = (await cookies()).get(SESSION_COOKIE)?.value;
+  const token = await getSessionToken();
   if (!token) {
     return null;
   }

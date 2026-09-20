@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 import jwt
 from dotenv import load_dotenv
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel
 
 load_dotenv(".env.local")
@@ -56,15 +56,28 @@ def login(payload: LoginRequest):
     return LoginResponse(token=token)
 
 
-@app.get("/verify", response_model=VerifyResponse)
-def verify(authorization: str = Header(...)):
+def verify_token(authorization: str = Header(...)) -> dict:
     scheme, _, token = authorization.partition(" ")
     if scheme.lower() != "bearer" or not token:
         raise HTTPException(status_code=401, detail="Invalid authorization header")
 
     try:
-        payload = jwt.decode(token, get_secret_key(), algorithms=[JWT_ALGORITHM])
+        return jwt.decode(token, get_secret_key(), algorithms=[JWT_ALGORITHM])
     except jwt.PyJWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
+
+@app.get("/verify", response_model=VerifyResponse)
+def verify(payload: dict = Depends(verify_token)):
     return VerifyResponse(**payload)
+
+
+@app.get("/protected")
+def protected(payload: dict = Depends(verify_token)):
+    return {
+        "message": "This is protected data",
+        "items": [
+            {"id": 1, "name": "Widget"},
+            {"id": 2, "name": "Gadget"},
+        ],
+    }
